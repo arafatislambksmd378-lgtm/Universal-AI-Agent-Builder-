@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "uab-platform"
+version = "0.1.0"
+description = "Universal AI Agent Builder — control plane (workspaces, agents, auth, audit, provider routing)"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Universal AI Agent Builder Contributors" }]
+requires-python = ">=3.11,<3.15"
+# Supported/target runtime is Python 3.14 (CI + Docker image). The floor is kept at
+# 3.11 ONLY so the sandboxed dev loop on this machine can run the suite; do not
+# interpret it as a support guarantee. See docs/development.md.
+dependencies = [
+  "fastapi>=0.115.0,<1",
+  "uvicorn[standard]>=0.31.0,<1",
+  "sqlalchemy>=2.0.36,<2.1",
+  "alembic>=1.14.0,<2",
+  "psycopg[binary]>=3.2.3,<4",
+  "pydantic>=2.10.0,<3",
+  "pydantic-settings>=2.6.0,<3",
+  "argon2-cffi>=23.1.0,<26",
+  "PyJWT>=2.10.0,<3",
+  "httpx>=0.28.0,<1",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3.0,<10",
+  "pytest-asyncio>=0.24.0,<2",
+  "ruff>=0.9.0,<1",
+  # Embedded PostgreSQL for local dev/test in environments without Docker (e.g. this sandbox).
+  # NOT a runtime dependency. In CI, a postgres:16 service container is used instead.
+  "pgserver>=0.1.4,<0.2",
+]
+
+[project.scripts]
+uab-bootstrap = "uab_platform.bootstrap:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+uab_platform = ["py.typed"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "S", "C90", "ASYNC", "RUF"]
+ignore = [
+  "S101",    # asserts are expected in tests
+  "B008",    # FastAPI Depends() in defaults is idiomatic
+  "UP042",   # str+Enum is intentional; StrEnum requires Python 3.12, our floor is 3.11
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S106", "S107", "S108"]
+"alembic/versions/**" = ["E501"]

@@ -1,0 +1,40 @@
+# Universal AI Agent Builder — monorepo ignore rules
+# Large upstream acquisition artifacts & third-party working tree are kept out of Git.
+# They are preserved locally under /acquisition and /work (see acquisition/ACQUISITION-METADATA.json).
+/acquisition/zip/
+/acquisition/original/
+/work/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+dist/
+build/
+.next/
+.turbo/
+
+# Env & secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# OS / editors
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Logs
+*.log
