@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  push:
+    branches: [main, arena/*, feature/*, integration]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  platform-lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Set up Python 3.14
+        run: uv python install 3.14
+      - name: Install platform (dev)
+        working-directory: platform
+        run: uv venv && uv pip install -e . --group dev
+      - name: Ruff lint
+        working-directory: platform
+        run: .venv/bin/python -m ruff check src tests alembic
+      - name: Ruff format check
+        working-directory: platform
+        run: .venv/bin/python -m ruff format --check src tests alembic
+
+  platform-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: uab_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+    env:
+      UAB_DATABASE_URL: postgresql+psycopg://postgres:postgres@127.0.0.1:5432/uab_test
+      UAB_ENVIRONMENT: test
+      UAB_JWT_SECRET: uab-ci-only-secret-0123456789abcdef0123456789abcdef
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Set up Python 3.14
+        run: uv python install 3.14
+      - name: Install platform (dev)
+        working-directory: platform
+        run: uv venv --python 3.14 && uv pip install -e . --group dev
+      - name: Verify interpreter is 3.14
+        working-directory: platform
+        run: .venv/bin/python -c "import sys; assert sys.version_info[:2] == (3, 14), sys.version"
+      - name: Apply migrations
+        working-directory: platform
+        run: .venv/bin/alembic upgrade head
+      - name: Migration downgrade/upgrade check
+        working-directory: platform
+        run: .venv/bin/alembic downgrade base && .venv/bin/alembic upgrade head
+      - name: Run test suite
+        working-directory: platform
+        run: .venv/bin/python -m pytest tests/ -q
+
+  openapi-drift:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Set up Python 3.14
+        run: uv python install 3.14
+      - name: Install platform
+        working-directory: platform
+        run: uv venv --python 3.14 && uv pip install -e .
+      - name: Regenerate OpenAPI and fail on drift
+        run: |
+          platform/.venv/bin/python scripts/export_openapi.py
+          git diff --exit-code -- contracts/openapi.json
+
+  upstream-reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify upstream pin is recorded
+        run: |
+          grep -q "fd3174e9c5cdd037203bb4e111c950667988f3ca" acquisition/ACQUISITION-METADATA.json
+          grep -q "fd3174e9c5cdd037203bb4e111c950667988f3ca" docs/upstream.md
+      - name: Verify no upstream code is vendored into platform/
+        run: |
+          ! grep -R "Nous Research" platform/src --include='*.py' -q
+          echo "platform package is clean of upstream-derived code"
