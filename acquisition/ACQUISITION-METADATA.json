@@ -1,0 +1,21 @@
+{
+  "acquisition_date_utc": "2026-11-13T11:04:00Z",
+  "repository_url": "https://github.com/NousResearch/hermes-agent",
+  "default_branch": "main",
+  "source_commit_sha": "fd3174e9c5cdd037203bb4e111c950667988f3ca",
+  "source_commit_date": "2026-11-13T03:02:12-08:00",
+  "zip_url": "https://github.com/NousResearch/hermes-agent/archive/refs/heads/main.zip",
+  "zip_sha256": "9ea0e0e79e4ab09027bf59a0f90c34d0d78b5b2bceaace6e1771adb219baf427",
+  "zip_size_bytes": 107280822,
+  "zip_path": "acquisition/zip/hermes-agent-main.zip",
+  "zip_integrity": "PASS (python zipfile testzip, 26,697 entries, 254,454,542 uncompressed bytes)",
+  "extracted_snapshot_path": "acquisition/original/hermes-agent-main",
+  "extracted_files": 25470,
+  "extracted_bytes": 254454542,
+  "working_copy_path": "work/hermes-agent",
+  "working_copy_type": "full git clone of upstream, HEAD verified == fd3174e9c5cdd037203bb4e111c950667988f3ca, clean tree",
+  "working_copy_matches_snapshot": "diff -qr excluding .git: identical",
+  "latest_stable_release": {"tag": "v0.23.1", "published": "2026-11-10T01:42:15Z"},
+  "latest_prerelease": {"tag": "v0.23.1+canary.20261113T064447Z", "published": "2026-11-13T08:06:48Z"},
+  "license": "MIT"
+}
