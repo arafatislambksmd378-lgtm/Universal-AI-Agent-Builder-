@@ -1,0 +1,30 @@
+# Development-only PostgreSQL for the control plane.
+# Production deployment is defined in BATCH 16 (supervised images, TLS, backups).
+#
+#   docker compose -f docker-compose.dev.yml up -d
+#   export UAB_DATABASE_URL=postgresql+psycopg://uab:uab@127.0.0.1:5432/uab
+#   cd platform && alembic upgrade head
+#
+# These credentials are throwaway and exist solely on the developer machine.
+# Never reuse them outside local development.
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: uab-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: uab
+      POSTGRES_PASSWORD: uab
+      POSTGRES_DB: uab
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - uab-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U uab -d uab"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  uab-pgdata:
