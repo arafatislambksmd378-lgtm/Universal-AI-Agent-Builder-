@@ -2,13 +2,11 @@
 
 ## Toolchain
 
-- **Target Python: 3.14** (per project policy). In this sandbox 3.14 is not installable
-  (`uv python install 3.14` fetches from the python-build-standalone index, which this
-  environment cannot reach; apt is unreachable too). The whole BATCH 02 verification loop was
-  executed on **Python 3.11.2** and is **not** evidence of 3.14 behavior. CI
-  (`.github/workflows/ci.yml`) installs 3.14 via `astral-sh/setup-uv` + `uv python install 3.14`
-  and runs ruff + the full pytest suite + migration up/down/up on 3.14 — that job is the
-  reproducible-3.14 proof path and must stay green from the first PR after this batch.
+- **Target Python: 3.14** (CI `.github/workflows/ci.yml` installs it via uv and runs ruff + the
+  full suite incl. migration downgrade/upgrade against a postgres:16 service — first verified
+  green 2026-11-13, see `reports/REPORT-02-FINAL-REVIEW.md`). The sandboxed dev loop on the
+  development machine runs **Python 3.11.2** only and is **not** evidence of 3.14 behavior;
+  treat CI as the 3.14 source of truth.
 - Local dependencies are installed editable: `uv pip install -e . --group dev`
   (dev group: pytest, pytest-asyncio, httpx, ruff, alembic, pgserver, mypy).
 - `uv.lock` — regenerate with `uv lock` after changing `pyproject.toml` before the first
@@ -21,12 +19,13 @@ Three sanctioned ways to get a dev Postgres; none is allowed in production:
 | Way | When to use |
 |---|---|
 | `docker compose -f docker-compose.dev.yml up -d` | normal dev machines with Docker |
-| `python scripts/dev_db.py -- <cmd>` | Docker-less environments; starts embedded PG (pgserver, cp39–cp312 manylinux wheels only), exports `UAB_DATABASE_URL`, runs the command |
+| `platform/.venv/bin/python ../scripts/dev_db.py -- <cmd>` | Docker-less environments (Python ≤3.12); starts embedded PG (pgserver), exports `UAB_DATABASE_URL`/`UAB_TEST_DATABASE_URL`, runs the command |
 | `pytest` (conftest) | tests boot their own private embedded instance in a tmp dir; nothing leaks between runs |
 
 Notes & limits:
-- `pgserver` is a **test/dev-only** convenience, pinned under the `dev` dependency group. It is
-  deliberately absent from runtime dependencies and from the Docker image.
+- `pgserver` is a **test/dev-only** convenience, pinned under the `local` dependency group (not
+  `dev`) because it has no cp313/cp314 wheels. CI never installs it (uses the postgres:16 service);
+  it is deliberately absent from runtime dependencies and from the Docker image.
 - The embedded server listens on a Unix socket in the given data dir; it is not reachable from
   outside the machine.
 - Production schema path = `alembic upgrade head` against `UAB_DATABASE_URL`. Migrations are
@@ -59,8 +58,9 @@ mkdir -p ../contracts && python ../scripts/export_openapi.py   # refresh API con
 
 ## Testing
 
-- DB-backed tests use the embedded PG fixture; pure unit tests (rbac, tokens, providers, config)
-  need no database.
+- DB-backed tests use `UAB_TEST_DATABASE_URL` when set (CI service PG; migration tests create a
+  scratch database on that server), otherwise an embedded PG via pgserver; pure unit tests (rbac,
+  tokens, providers, config) need no database. Run from any cwd — `alembic` paths are absolute in tests.
 - `test_db_migrations.py` boots a *private* embedded PG and runs up/down/up.
 - `client` fixture builds the real FastAPI app in-process via httpx ASGI transport — no ports.
 - The mock provider is the default; **no test may require Ollama or any paid API**.

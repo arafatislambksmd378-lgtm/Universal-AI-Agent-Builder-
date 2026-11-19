@@ -31,12 +31,13 @@ platform/
 ## Quickstart (local, no Docker required)
 
 ```bash
-# 1. Python 3.14 is the target; >=3.11 works for the local loop (see docs/development.md)
-uv venv && uv pip install -e . --group dev
-# (or: python3 -m venv .venv && .venv/bin/pip install -e . && uv pip install pytest pytest-asyncio pgserver)
+# 1. Python 3.14 is the target (see docs/development.md); 3.11+ works for the local loop
+uv sync --locked --group dev          # reproducible install from uv.lock
+# on Python ≤3.12 without Docker you can also add the embedded-PG helper:
+# uv sync --locked --group dev --group local
 
 # 2. PostgreSQL — either Docker…
-docker compose -f ../docker-compose.dev.yml up -d
+docker compose -f ../docker-compose.dev.yml up -d   # or: python ../scripts/dev_db.py (embedded PG)
 export UAB_DATABASE_URL=postgresql+psycopg://uab:uab@127.0.0.1:5432/uab
 #   …or the bundled embedded server (used by the tests):
 python ../scripts/dev_db.py -- alembic upgrade head

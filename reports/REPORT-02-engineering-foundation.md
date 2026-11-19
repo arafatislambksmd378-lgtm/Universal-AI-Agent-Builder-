@@ -1,5 +1,13 @@
 # BATCH 02 — Engineering Foundation · Implementation Report
 
+> **ERRATA (2026-11-13, superseded by `reports/REPORT-02-FINAL-REVIEW.md`):** Several items below were
+> resolved after this report was written — CI is now **green** (Python 3.14 + postgres:16 service,
+> first verified 2026-11-13); `uv.lock` now exists and CI installs with `--locked`; the CI install
+> bug (`uv pip install --group dev`) is fixed; avatar identity fields + `GET …/agents/{id}/activity`
+> were added after frontend review; `agents:lifecycle` is admin-gated (per ADR-0005); JWTs carry and
+> verify `iss=uab-control-plane`; CORS is configurable. Test count is now 81. See the FINAL-REVIEW
+> report for the authoritative, current status. This document is preserved unchanged otherwise.
+
 Date: 2026-11-13 · Branch: `arena/2e48576e-universal-ai-agent-builder` · Base: `main` (6fc7fe5)
 Executor: Agent Mode (Arena.ai) · Verdict: **BATCH 02 COMPLETE (with documented limitations), stop for review. BATCH 03 not started.**
 

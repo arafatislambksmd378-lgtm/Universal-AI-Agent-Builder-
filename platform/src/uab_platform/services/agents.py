@@ -144,6 +144,9 @@ def update_agent(
     return agent
 
 
+_ACTION_VERB = {"activate": "activated", "pause": "paused", "archive": "archived", "restore": "restored"}
+
+
 def transition(
     session: Session,
     *,
@@ -157,7 +160,7 @@ def transition(
     session.add(agent)
     audit_service.emit_audit(
         session,
-        event_type=f"agent.{action}",
+        event_type=f"agent.{_ACTION_VERB[action]}",
         workspace_id=agent.workspace_id,
         actor_user_id=actor_user_id,
         target_type="agent",

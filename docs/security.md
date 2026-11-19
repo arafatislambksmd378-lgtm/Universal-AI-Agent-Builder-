@@ -8,8 +8,9 @@ here; see REPORT-01 §9.5 and the upstream security docs.
 - Passwords: argon2-id (`argon2-cffi`), random salt, tuned via library defaults. Verification is
   constant-time-ish (library-provided). **No** plaintext storage, **no** reversible encryption.
 - Tokens: short-lived JWT **access** tokens (default 15 min) + long-lived **refresh** tokens
-  (default 30 days), HS256 in dev, `UAB_JWT_SECRET` from env; `iss` = `uab-control-plane`.
-  Token payload: `sub` (user id), `iat`, `exp`, `jti`, `typ` (`access`|`refresh`).
+  (default 30 days), HS256 in dev, `UAB_JWT_SECRET` from env; **`iss` = `uab-control-plane`, pinned
+  and verified on decode** (forged-issuer tokens are rejected). Payload: `sub` (user id), `iss`,
+  `iat`, `exp`, `jti`, `typ` (`access`|`refresh`).
 - Refresh tokens carry `jti`; revocation list is future work (BATCH 12 hardening) — mitigate with
   short access TTL.
 - First-run bootstrap: when the users table is empty, the first registration becomes the owner of a
@@ -23,11 +24,11 @@ Static role → permission matrix in `security/rbac.py` (code is config; change 
 
 | Role | Intent | Key permissions |
 |---|---|---|
-| `viewer` | read-only | `agents:read`, audit read denied |
-| `member` | normal builder | + `agents:create`, `workspaces:update`, `audit` no |
-| `admin` | workspace operator | + `agents:activate`, `agents:update`, `members:manage`, `audit:read`, `delete` |
-| `owner` | workspace owner | everything in workspace |
-| superadmin | platform operator | settings write, cross-workspace operator calls |
+| `viewer` | read-only | `workspace:read`, `agents:read`, `settings:read` |
+| `member` | normal builder | + `agents:create`, `agents:update` (edit agents; cannot execute or change execution state) |
+| `admin` | workspace operator | + `agents:lifecycle` (activate/pause/archive/restore), `agents:delete`, `workspace:update`, `workspace:members:manage`, `audit:read`, `settings:update` |
+| `owner` | workspace owner | everything in the workspace incl. `workspace:delete`, and only owners may grant/revoke `owner` |
+| superadmin | platform operator | global `PUT /settings` only — no implicit workspace powers |
 
 Enforcement points:
 
@@ -51,16 +52,22 @@ Enforcement points:
   documents the surface with safe dev defaults only.
 - No secret is ever logged: JSON logging does not dump settings; error handlers map driver errors
   to generic codes; `redacted_database_url()` masks the password for diagnostics.
-- `validate_for_production()` refuses to boot in `production` with default/weak secrets, a non-
-  Postgres/SQLite URL opt-out, or debug flags.
+- `validate_for_production()` refuses to boot in `production` with default/weak secrets, the dev
+  database URL, or paid providers enabled.
 - JWT dev default is explicitly rejected for production (test enforces).
+- CORS is **disabled by default** (no cross-origin browser access). Set `UAB_CORS_ORIGINS` to a
+  comma-separated allowlist for your frontend origin(s); credentialed requests are enabled for
+  exactly those origins. Never use `*`.
+- Outbound bootstrap CLI: `uab-bootstrap` accepts `--password` (visible in shell history/process
+  list) or the `UAB_BOOTSTRAP_PASSWORD` env var (preferred on shared machines).
 
 ## 5. Audit logging
 
 - Append-only `audit_events` table; every mutating control-plane action records actor, workspace,
   target, event type, small metadata, and correlation id where available.
-- Reads of audit require `audit:read` (admin+).
-- Audit is not writable via the API.
+- Audit rows are written in the same transaction as the mutation (services take the same session).
+- Reads of audit require `audit:read` (admin+). Agent-scoped read: `GET …/agents/{id}/activity`.
+- Audit is not writable or deletable via the API.
 
 ## 6. Rate limiting & abuse
 
@@ -78,8 +85,9 @@ Enforcement points:
 
 ## 8. Dependency & supply chain
 
-- Direct dependencies pinned to `>=` floors with tested ceilings implied by CI lock (`uv.lock`).
-- No paid or private registries. CI runs lint + tests + migration up/down/up + OpenAPI drift.
+- Runtime dependencies pinned to `>=` floors; installed via `uv sync --locked` against committed
+  `uv.lock` (CI enforces lock freshness). No paid or private registries.
+- CI runs ruff + the full suite on Python 3.14 + migration up/down/up + OpenAPI drift check.
 - Hermes runtime pinned by upstream commit (see `docs/upstream.md`, `acquisition/ACQUISITION-METADATA.json`).
 
 ## 9. Known gaps (tracked, not hidden)
