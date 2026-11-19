@@ -55,6 +55,14 @@ class Settings(BaseSettings):
     # Observability
     correlation_id_header: str = Field(default="X-Correlation-ID")
 
+    # CORS: comma-separated allowlist of frontend origins (e.g. "https://app.uab.example.com").
+    # Empty = no cross-origin browser access (same-origin / server-to-server only) — the safe default.
+    cors_origins: str = Field(default="")
+
+    @property
+    def parsed_cors_origins(self) -> list[str]:
+        return [origin.strip().rstrip("/") for origin in self.cors_origins.split(",") if origin.strip()]
+
     @field_validator("environment")
     @classmethod
     def _environment_known(cls, v: str) -> str:

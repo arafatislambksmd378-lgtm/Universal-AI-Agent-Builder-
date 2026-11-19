@@ -23,7 +23,7 @@ _PERMISSIONS: dict[str, int] = {
     "agents:create": _ROLE_RANK["member"],
     "agents:update": _ROLE_RANK["member"],
     "agents:delete": _ROLE_RANK["admin"],
-    "agents:lifecycle": _ROLE_RANK["member"],
+    "agents:lifecycle": _ROLE_RANK["admin"],
     "agents:execute": _ROLE_RANK["member"],
     # audit & settings
     "audit:read": _ROLE_RANK["admin"],

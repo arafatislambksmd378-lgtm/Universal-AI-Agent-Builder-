@@ -21,7 +21,7 @@ def test_viewer_can_read_but_not_write() -> None:
 def test_member_can_manage_agents_but_not_audit() -> None:
     assert has_permission("member", "agents:create")
     assert has_permission("member", "agents:update")
-    assert has_permission("member", "agents:lifecycle")
+    assert not has_permission("member", "agents:lifecycle")  # ADR-0005: activation is admin-gated
     assert not has_permission("member", "agents:delete")
     assert not has_permission("member", "audit:read")
 
@@ -30,6 +30,7 @@ def test_admin_can_read_audit_and_delete_agents() -> None:
     assert has_permission("admin", "audit:read")
     assert has_permission("admin", "agents:delete")
     assert has_permission("admin", "settings:update")
+    assert has_permission("admin", "agents:lifecycle")
     assert not has_permission("admin", "workspace:delete")
 
 

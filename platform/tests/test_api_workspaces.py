@@ -149,3 +149,59 @@ async def test_cross_workspace_agent_isolation(client) -> None:
     # owner (of a different workspace) cannot see member's agent
     blocked = await client.get(f"/api/v1/workspaces/{member_ws}/agents/{agent_id}", headers=auth_headers(owner_token))
     assert blocked.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_member_cannot_activate_agent(client) -> None:
+    """ADR-0005: activation is admin-gated; members can create and edit but not activate."""
+    import uuid as _uuid
+
+    from uab_platform.db.session import transaction
+    from uab_platform.repositories import users as users_repo
+    from uab_platform.repositories import workspaces as workspaces_repo
+    from uab_platform.security.passwords import hash_password
+
+    registered = await register_user(client, "lifecycle-owner@example.com")
+    owner_token = registered.json()["tokens"]["access_token"]
+    ws_id = registered.json()["workspace"]["id"]
+
+    created = await client.post(
+        f"/api/v1/workspaces/{ws_id}/agents",
+        json={"name": "Guarded Agent"},
+        headers=auth_headers(owner_token),
+    )
+    assert created.status_code == 201
+    agent_id = created.json()["id"]
+
+    with transaction() as session:
+        member = users_repo.create_user(
+            session,
+            email="lifecycle-member@example.com",
+            password_hash=hash_password("member-pass-123"),
+            display_name="Member",
+        )
+        workspaces_repo.add_member(session, workspace_id=_uuid.UUID(ws_id), user_id=member.id, role="member")
+    member_login = await login(client, "lifecycle-member@example.com", "member-pass-123")
+    member_token = member_login.json()["tokens"]["access_token"]
+
+    denied = await client.post(
+        f"/api/v1/workspaces/{ws_id}/agents/{agent_id}/lifecycle",
+        json={"action": "activate"},
+        headers=auth_headers(member_token),
+    )
+    assert denied.status_code == 403
+
+    promoted = await client.patch(
+        f"/api/v1/workspaces/{ws_id}/members/{member.id}",
+        json={"role": "admin"},
+        headers=auth_headers(owner_token),
+    )
+    assert promoted.status_code == 200, promoted.text
+
+    allowed = await client.post(
+        f"/api/v1/workspaces/{ws_id}/agents/{agent_id}/lifecycle",
+        json={"action": "activate"},
+        headers=auth_headers(member_token),
+    )
+    assert allowed.status_code == 200, allowed.text
+    assert allowed.json()["status"] == "active"

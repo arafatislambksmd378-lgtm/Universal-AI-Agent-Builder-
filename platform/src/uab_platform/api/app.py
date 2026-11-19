@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from uab_platform import __version__
 from uab_platform.api.errors import register_exception_handlers
@@ -26,6 +27,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         openapi_url="/api/openapi.json",
     )
     app.add_middleware(CorrelationIdMiddleware, header_name=settings.correlation_id_header)
+    origins = settings.parsed_cors_origins
+    if origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=origins,
+            allow_credentials=True,
+            allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+            allow_headers=["Authorization", "Content-Type", "X-Correlation-ID"],
+            max_age=600,
+        )
     register_exception_handlers(app)
     app.include_router(health_router)
     app.include_router(v1_router)

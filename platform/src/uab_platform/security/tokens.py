@@ -19,6 +19,8 @@ from uab_platform.config import Settings
 
 TokenType = Literal["access", "refresh"]
 
+TOKEN_ISSUER = "uab-control-plane"  # noqa: S105 - JWT issuer label, not a credential
+
 
 class TokenError(Exception):
     """Raised for any token that fails verification (expired, wrong type, tampered)."""
@@ -38,6 +40,7 @@ def issue_token(settings: Settings, subject: str, token_type: TokenType) -> tupl
     expires = now + timedelta(seconds=ttl)
     jti = uuid.uuid4().hex
     payload = {
+        "iss": TOKEN_ISSUER,
         "sub": subject,
         "typ": token_type,
         "iat": int(now.timestamp()),
@@ -54,6 +57,7 @@ def verify_token(settings: Settings, token: str, expected_type: TokenType) -> To
             token,
             settings.jwt_secret,
             algorithms=[settings.jwt_algorithm],
+            issuer=TOKEN_ISSUER,
             options={"require": ["sub", "typ", "exp", "iat"]},
         )
     except jwt.ExpiredSignatureError as exc:
