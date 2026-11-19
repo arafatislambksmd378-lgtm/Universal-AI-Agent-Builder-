@@ -44,6 +44,8 @@ def list_for_workspace(
     event_type: str | None,
     limit: int,
     offset: int,
+    target_type: str | None = None,
+    target_id: str | None = None,
 ) -> tuple[list[AuditEvent], int]:
     stmt = (
         select(AuditEvent)
@@ -52,5 +54,9 @@ def list_for_workspace(
     )
     if event_type:
         stmt = stmt.where(AuditEvent.event_type == event_type)
+    if target_type:
+        stmt = stmt.where(AuditEvent.target_type == target_type)
+    if target_id:
+        stmt = stmt.where(AuditEvent.target_id == target_id)
     page = paginate(session, stmt, limit=limit, offset=offset)
     return page.items, page.total

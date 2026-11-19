@@ -112,6 +112,10 @@ class Agent(Base):
     __table_args__ = (
         UniqueConstraint("workspace_id", "slug", name="uq_agents_workspace_slug"),
         CheckConstraint("status IN ('draft','active','paused','archived')", name="status_valid"),
+        CheckConstraint(
+            "avatar_type IS NULL OR avatar_type IN ('preset','upload','url','generated')",
+            name="avatar_type_valid",
+        ),
         Index("ix_agents_workspace_id", "workspace_id"),
     )
 
@@ -122,6 +126,17 @@ class Agent(Base):
     role: Mapped[str] = mapped_column(String(120), nullable=False, server_default="assistant")
     description: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
     avatar_ref: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # Structured avatar identity (BATCH 02 review): platform-preset characters, uploaded
+    # images or external URLs. avatar_ref is legacy/superseded and retained only so older
+    # clients keep working.
+    avatar_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    avatar_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    avatar_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    avatar_style: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    avatar_metadata: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    # Frontend-facing identity/capability tags (e.g. "research", "code-review").
+    # Distinct from execution permissions: see config.tool_allowlist.
+    capabilities: Mapped[list[str]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
     system_instructions: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
     status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="draft")
     created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)

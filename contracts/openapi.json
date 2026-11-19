@@ -175,6 +175,30 @@
       },
       "AgentCreate": {
         "properties": {
+          "avatar_id": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Id"
+          },
+          "avatar_metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Metadata"
+          },
           "avatar_ref": {
             "anyOf": [
               {
@@ -186,6 +210,54 @@
               }
             ],
             "title": "Avatar Ref"
+          },
+          "avatar_style": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Style"
+          },
+          "avatar_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "preset",
+                  "upload",
+                  "url",
+                  "generated"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Type"
+          },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Capabilities",
+            "type": "array"
           },
           "config": {
             "$ref": "#/components/schemas/AgentConfigIn"
@@ -234,6 +306,29 @@
       },
       "AgentResponse": {
         "properties": {
+          "avatar_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Id"
+          },
+          "avatar_metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Metadata"
+          },
           "avatar_ref": {
             "anyOf": [
               {
@@ -244,6 +339,46 @@
               }
             ],
             "title": "Avatar Ref"
+          },
+          "avatar_style": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Style"
+          },
+          "avatar_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Type"
+          },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Capabilities",
+            "type": "array"
           },
           "config": {
             "anyOf": [
@@ -285,6 +420,17 @@
             "title": "Name",
             "type": "string"
           },
+          "organization": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organization"
+          },
           "role": {
             "title": "Role",
             "type": "string"
@@ -296,6 +442,17 @@
           "status": {
             "title": "Status",
             "type": "string"
+          },
+          "team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team"
           },
           "updated_at": {
             "format": "date-time",
@@ -326,6 +483,30 @@
       },
       "AgentUpdate": {
         "properties": {
+          "avatar_id": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Id"
+          },
+          "avatar_metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Metadata"
+          },
           "avatar_ref": {
             "anyOf": [
               {
@@ -337,6 +518,61 @@
               }
             ],
             "title": "Avatar Ref"
+          },
+          "avatar_style": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Style"
+          },
+          "avatar_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "preset",
+                  "upload",
+                  "url",
+                  "generated"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Type"
+          },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "capabilities": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capabilities"
           },
           "config": {
             "anyOf": [
@@ -1995,6 +2231,99 @@
         ]
       }
     },
+    "/api/v1/workspaces/{workspace_id}/agents/{agent_id}/activity": {
+      "get": {
+        "description": "Audit trail for this agent (requires audit:read, i.e. admin or owner).",
+        "operationId": "agent_activity_api_v1_workspaces__workspace_id__agents__agent_id__activity_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_AuditEventResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Agent Activity",
+        "tags": [
+          "agents"
+        ]
+      }
+    },
     "/api/v1/workspaces/{workspace_id}/agents/{agent_id}/lifecycle": {
       "post": {
         "operationId": "lifecycle_api_v1_workspaces__workspace_id__agents__agent_id__lifecycle_post",
@@ -2103,6 +2432,40 @@
                 }
               ],
               "title": "Event Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "target_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 50,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Target Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "target_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Target Id"
             }
           },
           {

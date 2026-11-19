@@ -3,11 +3,19 @@
 
 Docker is not required. The data directory defaults to ~/.uab-pgdata-dev (outside the repo).
 
+Requires the `local` dependency group. From platform/: `uv sync --group dev --group local`.
+Run this script with the same interpreter, e.g. `platform/.venv/bin/python scripts/dev_db.py ...`.
+
 Usage:
-    python scripts/dev_db.py -- alembic upgrade head
-    python scripts/dev_db.py --command "alembic revision --autogenerate -m 'x'"
+    platform/.venv/bin/python scripts/dev_db.py -- alembic upgrade head
+    platform/.venv/bin/python scripts/dev_db.py --command "alembic revision --autogenerate -m 'x'"
+    platform/.venv/bin/python scripts/dev_db.py            # just print the export lines
 
 Prints the SQLAlchemy URL as postgresql+psycopg://postgres:@/postgres?host=<socket dir>.
+When no command is given it only prints export lines for UAB_DATABASE_URL / UAB_TEST_DATABASE_URL.
+Point pytest at the same embedded server to exercise the external-PG path:
+    platform/.venv/bin/python scripts/dev_db.py -- <abs path to pytest> platform/tests -q
+(conftest honors UAB_TEST_DATABASE_URL / UAB_DATABASE_URL before falling back to its own embedded instance)
 """
 
 from __future__ import annotations
@@ -33,7 +41,7 @@ def main() -> int:
     try:
         import pgserver
     except ImportError:
-        print("pgserver is not installed. Install dev extras: uv pip install --group dev -e .", file=sys.stderr)
+        print("pgserver is not installed. It lives in the `local` dependency group: uv sync --group dev --group local", file=sys.stderr)
         return 2
 
     server = pgserver.get_server(args.pgdata)

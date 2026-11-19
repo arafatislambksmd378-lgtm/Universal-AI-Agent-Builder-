@@ -19,13 +19,21 @@ router = APIRouter(prefix="/workspaces/{workspace_id}/audit", tags=["audit"])
 def list_audit_events(
     workspace_id: uuid.UUID,
     event_type: str | None = Query(default=None, max_length=200),
+    target_type: str | None = Query(default=None, max_length=50),
+    target_id: str | None = Query(default=None, max_length=100),
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     membership=Depends(require_permission("audit:read")),
     session: Session = Depends(get_db),
 ) -> Page[AuditEventResponse]:
     items, total = audit_repo.list_for_workspace(
-        session, workspace_id=workspace_id, event_type=event_type, limit=limit, offset=offset
+        session,
+        workspace_id=workspace_id,
+        event_type=event_type,
+        limit=limit,
+        offset=offset,
+        target_type=target_type,
+        target_id=target_id,
     )
     return Page[AuditEventResponse](
         items=[AuditEventResponse.model_validate(item) for item in items],

@@ -31,8 +31,13 @@ dev = [
   "pytest>=8.3.0,<10",
   "pytest-asyncio>=0.24.0,<2",
   "ruff>=0.9.0,<1",
-  # Embedded PostgreSQL for local dev/test in environments without Docker (e.g. this sandbox).
-  # NOT a runtime dependency. In CI, a postgres:16 service container is used instead.
+]
+# Embedded PostgreSQL for local dev/test in Docker-less environments (e.g. this sandbox).
+# NOT a runtime dependency, and deliberately NOT in the default `dev` group:
+# pgserver ships binary wheels only up to CPython 3.12, so a plain `uv sync --group dev`
+# works on 3.14 (CI, target runtime). Locally on <=3.12 you can add it:
+#   uv sync --group dev --group local
+local = [
   "pgserver>=0.1.4,<0.2",
 ]
 

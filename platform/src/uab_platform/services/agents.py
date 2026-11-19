@@ -66,6 +66,12 @@ def create_agent(
     avatar_ref: str | None,
     system_instructions: str,
     config: AgentConfigIn,
+    avatar_id: str | None = None,
+    avatar_url: str | None = None,
+    avatar_type: str | None = None,
+    avatar_style: str | None = None,
+    avatar_metadata: dict | None = None,
+    capabilities: list[str] | None = None,
 ) -> Agent:
     final_slug = slug or slugify(name)
     if agents_repo.get_agent_by_slug(session, workspace_id=workspace_id, slug=final_slug) is not None:
@@ -77,6 +83,12 @@ def create_agent(
         role=role.strip() or "assistant",
         description=description,
         avatar_ref=avatar_ref,
+        avatar_id=avatar_id,
+        avatar_url=avatar_url,
+        avatar_type=avatar_type,
+        avatar_style=avatar_style,
+        avatar_metadata=avatar_metadata,
+        capabilities=capabilities or [],
         system_instructions=system_instructions,
         created_by=created_by,
     )

@@ -12,12 +12,14 @@ from uab_platform.api.deps import get_current_user, get_db, require_permission
 from uab_platform.api.errors import Conflict, NotFound, ValidationAppError
 from uab_platform.db.models import User
 from uab_platform.repositories import agents as agents_repo
+from uab_platform.repositories import audit as audit_repo
 from uab_platform.schemas.agents import (
     AgentCreate,
     AgentResponse,
     AgentUpdate,
     LifecycleAction,
 )
+from uab_platform.schemas.audit import AuditEventResponse
 from uab_platform.schemas.common import Page
 from uab_platform.services import agents as agent_service
 from uab_platform.services.agents import AgentNotFound, AgentSlugConflict, AgentTransitionError
@@ -54,6 +56,12 @@ def create_agent(
             role=body.role,
             description=body.description,
             avatar_ref=body.avatar_ref,
+            avatar_id=body.avatar_id,
+            avatar_url=body.avatar_url,
+            avatar_type=body.avatar_type,
+            avatar_style=body.avatar_style,
+            avatar_metadata=body.avatar_metadata,
+            capabilities=body.capabilities,
             system_instructions=body.system_instructions,
             config=body.config,
         )
@@ -121,6 +129,34 @@ def delete_agent(
 
 class LifecycleRequest(BaseModel):
     action: LifecycleAction
+
+
+@router.get("/{agent_id}/activity", response_model=Page[AuditEventResponse])
+def agent_activity(
+    workspace_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    membership=Depends(require_permission("audit:read")),
+    session: Session = Depends(get_db),
+) -> Page[AuditEventResponse]:
+    """Audit trail for this agent (requires audit:read, i.e. admin or owner)."""
+    agent = _agent_or_404(session, workspace_id=workspace_id, agent_id=agent_id)
+    items, total = audit_repo.list_for_workspace(
+        session,
+        workspace_id=workspace_id,
+        event_type=None,
+        limit=limit,
+        offset=offset,
+        target_type="agent",
+        target_id=str(agent.id),
+    )
+    return Page[AuditEventResponse](
+        items=[AuditEventResponse.model_validate(item) for item in items],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.post("/{agent_id}/lifecycle", response_model=AgentResponse)

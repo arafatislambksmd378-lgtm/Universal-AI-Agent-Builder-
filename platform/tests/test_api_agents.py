@@ -172,3 +172,169 @@ async def test_agent_audit_events_recorded(client) -> None:
             {"ws": ws_id},
         ).all()
     assert len(rows) == 1
+
+
+async def test_create_agent_with_avatar_identity(client) -> None:
+    token, ws_id = await _owner_with_workspace(client)
+    response = await client.post(
+        f"/api/v1/workspaces/{ws_id}/agents",
+        json={
+            "name": "Nova",
+            "role": "research-analyst",
+            "description": "Digs through docs and summarises.",
+            "avatar_id": "preset-nova-01",
+            "avatar_type": "preset",
+            "avatar_style": "2d-cute",
+            "avatar_metadata": {"palette": ["#7c3aed", "#c4b5fd"], "mood": "curious", "seed": 42},
+            "capabilities": ["research", "summarization", "Research"],  # normalised: lower-cased, de-duplicated
+        },
+        headers=auth_headers(token),
+    )
+    assert response.status_code == 201, response.text
+    agent = response.json()
+    assert agent["avatar_id"] == "preset-nova-01"
+    assert agent["avatar_type"] == "preset"
+    assert agent["avatar_style"] == "2d-cute"
+    assert agent["avatar_metadata"]["mood"] == "curious"
+    assert agent["capabilities"] == ["research", "summarization"]
+    # reserved org keys exist in the contract and are null until BATCH 04+
+    assert agent["team"] is None
+    assert agent["organization"] is None
+
+
+async def test_avatar_type_requires_reference(client) -> None:
+    token, ws_id = await _owner_with_workspace(client)
+    response = await client.post(
+        f"/api/v1/workspaces/{ws_id}/agents",
+        json={"name": "Broken Avatar", "avatar_type": "preset"},
+        headers=auth_headers(token),
+    )
+    assert response.status_code == 422
+
+
+async def test_avatar_type_must_be_known(client) -> None:
+    token, ws_id = await _owner_with_workspace(client)
+    response = await client.post(
+        f"/api/v1/workspaces/{ws_id}/agents",
+        json={"name": "Unknown Avatar", "avatar_type": "hologram", "avatar_id": "x"},
+        headers=auth_headers(token),
+    )
+    assert response.status_code == 422
+
+
+async def test_capability_tags_validated(client) -> None:
+    token, ws_id = await _owner_with_workspace(client)
+    bad = await client.post(
+        f"/api/v1/workspaces/{ws_id}/agents",
+        json={"name": "BadCaps", "capabilities": ["Has Spaces"]},
+        headers=auth_headers(token),
+    )
+    assert bad.status_code == 422
+    too_many = await client.post(
+        f"/api/v1/workspaces/{ws_id}/agents",
+        json={"name": "TooManyCaps", "capabilities": [f"cap-{i}" for i in range(41)]},
+        headers=auth_headers(token),
+    )
+    assert too_many.status_code == 422
+
+
+async def test_update_avatar_and_capabilities(client) -> None:
+    token, ws_id = await _owner_with_workspace(client)
+    created = (
+        await client.post(
+            f"/api/v1/workspaces/{ws_id}/agents",
+            json={"name": "ShapeShifter", "avatar_id": "preset-a", "avatar_type": "preset"},
+            headers=auth_headers(token),
+        )
+    ).json()
+    patched = await client.patch(
+        f"/api/v1/workspaces/{ws_id}/agents/{created['id']}",
+        json={
+            "avatar_url": "https://cdn.example.com/avatars/shapeshifter.png",
+            "avatar_type": "url",
+            "avatar_metadata": {"origin": "upload-pipeline-v1"},
+            "capabilities": ["triage"],
+        },
+        headers=auth_headers(token),
+    )
+    assert patched.status_code == 200, patched.text
+    body = patched.json()
+    assert body["avatar_type"] == "url"
+    assert body["avatar_url"] == "https://cdn.example.com/avatars/shapeshifter.png"
+    assert body["avatar_metadata"]["origin"] == "upload-pipeline-v1"
+    assert body["capabilities"] == ["triage"]
+
+
+async def test_agent_activity_endpoint_scoped_and_permissioned(client) -> None:
+    token, ws_id = await _owner_with_workspace(client)
+    created = (
+        await client.post(
+            f"/api/v1/workspaces/{ws_id}/agents",
+            json={"name": "Activity Probe"},
+            headers=auth_headers(token),
+        )
+    ).json()
+    activity = await client.get(
+        f"/api/v1/workspaces/{ws_id}/agents/{created['id']}/activity", headers=auth_headers(token)
+    )
+    assert activity.status_code == 200, activity.text
+    body = activity.json()
+    assert body["total"] >= 1
+    assert any(item["event_type"] == "agent.created" for item in body["items"])
+    assert all(item["target_id"] == created["id"] for item in body["items"])
+
+
+async def test_agent_activity_requires_audit_read(client) -> None:
+    import uuid as _uuid
+
+    from conftest import login
+    from uab_platform.db.session import transaction
+    from uab_platform.repositories import users as users_repo
+    from uab_platform.repositories import workspaces as workspaces_repo
+    from uab_platform.security.passwords import hash_password
+
+    token, ws_id = await _owner_with_workspace(client)
+    created = (
+        await client.post(
+            f"/api/v1/workspaces/{ws_id}/agents",
+            json={"name": "Guarded Activity"},
+            headers=auth_headers(token),
+        )
+    ).json()
+
+    with transaction() as session:
+        member = users_repo.create_user(
+            session,
+            email="activity-member@example.com",
+            password_hash=hash_password("member-pass-123"),
+            display_name="Member",
+        )
+        workspaces_repo.add_member(session, workspace_id=_uuid.UUID(ws_id), user_id=member.id, role="member")
+    member_token = (await login(client, "activity-member@example.com", "member-pass-123")).json()["tokens"][
+        "access_token"
+    ]
+
+    forbidden = await client.get(
+        f"/api/v1/workspaces/{ws_id}/agents/{created['id']}/activity", headers=auth_headers(member_token)
+    )
+    assert forbidden.status_code == 403
+
+
+async def test_audit_list_target_id_filter(client) -> None:
+    token, ws_id = await _owner_with_workspace(client)
+    agent = (
+        await client.post(
+            f"/api/v1/workspaces/{ws_id}/agents",
+            json={"name": "Filtered"},
+            headers=auth_headers(token),
+        )
+    ).json()
+    filtered = await client.get(
+        f"/api/v1/workspaces/{ws_id}/audit",
+        params={"target_type": "agent", "target_id": agent["id"]},
+        headers=auth_headers(token),
+    )
+    assert filtered.status_code == 200
+    body = filtered.json()
+    assert body["total"] >= 1
+    assert all(item["target_id"] == agent["id"] for item in body["items"])

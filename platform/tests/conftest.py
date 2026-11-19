@@ -1,9 +1,14 @@
 """Test harness.
 
-- A session-scoped embedded PostgreSQL (pgserver) instance is created in a tmp
-  directory; Alembic migrations are applied once per session.
-- Each test runs against a clean database (TRUNCATE ... RESTART IDENTITY CASCADE).
-- HTTP-level tests use httpx ASGITransport — no network needed.
+Two database sources, in priority order:
+
+1. ``UAB_TEST_DATABASE_URL`` — an external, disposable PostgreSQL (CI uses a
+   postgres:16 service container). The session applies Alembic migrations to it;
+   each test truncates all tables (RESTART IDENTITY CASCADE).
+2. Embedded PostgreSQL via ``pgserver`` (local dev without Docker). Requires the
+   ``local`` dependency group (``uv sync --group dev --group local``).
+
+HTTP-level tests use httpx ASGITransport — no network needed.
 """
 
 from __future__ import annotations
@@ -17,16 +22,27 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
-_DEV_PGDATA = Path(os.path.expanduser("~/.uab-pgdata-test"))
-
 
 def _sqlalchemy_url(pguri: str) -> str:
     return pguri.replace("postgresql://", "postgresql+psycopg://", 1)
 
 
+def external_url() -> str | None:
+    url = os.environ.get("UAB_TEST_DATABASE_URL") or os.environ.get("UAB_DATABASE_URL")
+    return url or None
+
+
 @pytest.fixture(scope="session")
 def pg_url(tmp_path_factory: pytest.TempPathFactory) -> Iterator[str]:
-    pgserver = pytest.importorskip("pgserver", reason="embedded PostgreSQL (pgserver) not installed")
+    ext = external_url()
+    if ext is not None:
+        yield _sqlalchemy_url(ext) if ext.startswith("postgresql://") else ext
+        return
+    pgserver = pytest.importorskip(
+        "pgserver",
+        reason="no UAB_TEST_DATABASE_URL set and embedded PostgreSQL (pgserver) not installed; "
+        "use `uv sync --group dev --group local` or set UAB_TEST_DATABASE_URL",
+    )
     pgdata = tmp_path_factory.mktemp("pgdata") / "pg"
     server = pgserver.get_server(str(pgdata))
     yield _sqlalchemy_url(server.get_uri())
@@ -42,6 +58,7 @@ def migrated_url(pg_url: str, monkeypatch_session: pytest.MonkeyPatch) -> Iterat
 
     root = Path(__file__).resolve().parents[1]
     cfg = Config(str(root / "alembic.ini"))
+    cfg.set_main_option("script_location", str(root / "alembic"))
     cfg.set_main_option("sqlalchemy.url", pg_url)
     from uab_platform.config import get_settings
 
