@@ -32,7 +32,7 @@ Static role → permission matrix in `security/rbac.py` (code is config; change 
 
 Enforcement points:
 
-- Route dependencies: `require_permission("agents:activate")` etc. (403 on failure).
+- Route dependencies: `require_permission("agents:lifecycle")` etc. (403 on failure).
 - Query construction: every repository list/get filters by `workspace_id`; foreign references
   return 404 (no cross-tenant existence oracle).
 - Role hierarchy check prevents an admin from granting `owner`, or an owner from demoting the last

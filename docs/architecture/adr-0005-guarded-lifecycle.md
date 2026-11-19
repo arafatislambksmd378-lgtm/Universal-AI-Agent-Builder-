@@ -10,7 +10,7 @@
 - Agent lifecycle state machine is explicit: `draft → active → paused → active … → archived`,
   `draft → archived`, archive is reversible; invalid transitions return `409 invalid_transition`.
 - Agents are **created in `draft` only**. Activation is an explicit, separate, permission-checked
-  call (`agents:activate`). Viewer/member roles cannot activate.
+  call (`agents:lifecycle`). Viewer/member roles cannot activate.
 - Configuration updates go through schema validation (`AgentConfigIn`) with a bounded tool
   allowlist and an optional per-agent provider pin; invalid configs are rejected before storage.
 - Every mutating action emits an `audit_events` row (`agent.created`, `agent.updated`,

@@ -39,7 +39,7 @@ export UAB_DATABASE_URL=postgresql+psycopg://uab:uab@127.0.0.1:5432/uab
 alembic upgrade head                 # schema
 alembic downgrade base && alembic upgrade head   # verify reversibility
 uvicorn uab_platform.api.app:app --reload
-python -m pytest tests/ -q           # ~10s; 71 tests at time of writing
+python -m pytest tests/ -q           # ~10s; 81 tests at time of writing
 mkdir -p ../contracts && python ../scripts/export_openapi.py   # refresh API contract
 ```
 
