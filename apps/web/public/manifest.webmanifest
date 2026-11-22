@@ -1,0 +1,18 @@
+{
+  "name": "AI Store Manager",
+  "short_name": "Store Manager",
+  "description": "Owner-approved AI operations for a Shopify store.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

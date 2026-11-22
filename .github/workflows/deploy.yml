@@ -1,0 +1,92 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.base.json'
+      - '.github/workflows/deploy.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to Cloudflare
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      WRANGLER_SEND_METRICS: 'false'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check Cloudflare credentials
+        id: creds
+        run: |
+          if [ -z "${CLOUDFLARE_API_TOKEN}" ] || [ -z "${CLOUDFLARE_ACCOUNT_ID}" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID are not set. Skipping deploy — see docs/DEPLOYMENT_GUIDE_ANDROID.md"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check D1 database id
+        id: d1
+        run: |
+          if grep -q "REPLACE_WITH_D1_DATABASE_ID" apps/api/wrangler.toml; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::apps/api/wrangler.toml still has the placeholder database_id. Create a D1 database and paste its id."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verify before deploying
+        if: steps.creds.outputs.ready == 'true'
+        run: npm run verify
+
+      - name: Apply D1 migrations
+        if: steps.creds.outputs.ready == 'true' && steps.d1.outputs.configured == 'true'
+        working-directory: apps/api
+        run: npx --yes wrangler@4 d1 migrations apply aism-db --remote
+
+      - name: Deploy Worker
+        if: steps.creds.outputs.ready == 'true'
+        working-directory: apps/api
+        run: npx --yes wrangler@4 deploy
+
+      - name: Build web app
+        if: steps.creds.outputs.ready == 'true'
+        run: npm run build --workspace @aism/web
+
+      - name: Deploy Pages
+        if: steps.creds.outputs.ready == 'true'
+        run: npx --yes wrangler@4 pages deploy apps/web/dist --project-name=aism-web --branch=main
+
+      - name: Summary
+        if: steps.creds.outputs.ready == 'true'
+        run: |
+          echo "### Deployment complete" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Worker: \`aism-api\` (see the log above for its URL)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Pages:  \`aism-web\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Verify: \`/api/health\` must report \`status: ok\` and \`migrationsApplied >= 1\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Remaining manual step: set \`APP_ORIGIN\`, \`SETUP_TOKEN\`, \`SESSION_SECRET\`, \`COOKIE_SAMESITE\` as Worker secrets." >> "$GITHUB_STEP_SUMMARY"
