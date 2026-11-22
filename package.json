@@ -1,0 +1,24 @@
+{
+  "name": "ai-shopify-store-manager",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Cloud-hosted AI autonomous Shopify store manager (Cloudflare Workers + D1 + React)",
+  "engines": {
+    "node": ">=22.5"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace @aism/web",
+    "dev:api": "npm run dev --workspace @aism/api",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "verify": "npm run typecheck && npm run test && npm run build",
+    "db:migrate:local": "npm run db:migrate:local --workspace @aism/api"
+  },
+  "license": "UNLICENSED"
+}

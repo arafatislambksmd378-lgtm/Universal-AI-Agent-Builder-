@@ -1,0 +1,31 @@
+# Cloudflare Worker configuration.
+# Docs: https://developers.cloudflare.com/workers/wrangler/configuration/
+#
+# After creating the D1 database (`npx wrangler d1 create aism-db`) paste the
+# returned database_id below. Everything else is safe to keep as-is.
+
+name = "aism-api"
+main = "src/index.ts"
+compatibility_date = "2025-01-15"
+workers_dev = true
+
+# Secrets (never commit real values):
+#   npx wrangler secret put APP_ORIGIN      -> https://<your-pages-domain>
+#   npx wrangler secret put SETUP_TOKEN     -> one-time bootstrap token
+#   npx wrangler secret put SESSION_SECRET  -> 32+ random bytes (base64url)
+
+[vars]
+ENVIRONMENT = "production"
+APP_NAME = "AI Store Manager"
+LOG_LEVEL = "info"
+COOKIE_SECURE = "true"
+# PASSWORD_ITERATIONS left at the secure default of 100000.
+
+[[d1_databases]]
+binding = "DB"
+database_name = "aism-db"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+migrations_dir = "migrations"
+
+[observability]
+enabled = true

@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Typecheck, test and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify (typecheck + tests + builds)
+        run: npm run verify
+
+      - name: Check no secrets leaked into the bundle
+        run: |
+          set -euo pipefail
+          if grep -rEIn "shpat_|shpca_|AIza[0-9A-Za-z_-]{20,}|SETUP_TOKEN\s*=\s*['\"][^'\"]+" apps/web/dist apps/api/dist; then
+            echo "::error::Possible secret found in build output"
+            exit 1
+          fi
+          echo "No secret material found in build output."
+
+      - name: Upload build artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ github.sha }}
+          path: |
+            apps/api/dist/index.js
+            apps/web/dist
+          retention-days: 7
